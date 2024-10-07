@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <title>Babylon.js sample code</title>
+
+        <!-- Babylon.js -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+        <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+        <script src="https://cdn.babylonjs.com/recast.js"></script>
+        <script src="https://cdn.babylonjs.com/ammo.js"></script>
+        <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+        <script src="https://cdn.babylonjs.com/cannon.js"></script>
+        <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+        <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
+        <script src="https://cdn.babylonjs.com/babylon.js"></script>
+        <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+        <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+        <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+        <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+        <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+            
+            #canvasZone {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+    </head>
+<body>
+    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <script>
+        var canvas = document.getElementById("renderCanvas");
+
+        var startRenderLoop = function (engine, canvas) {
+            engine.runRenderLoop(function () {
+                if (sceneToRender && sceneToRender.activeCamera) {
+                    sceneToRender.render();
+                }
+            });
+        }
+
+        var engine = null;
+        var scene = null;
+        var sceneToRender = null;
+        var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
+        BABYLON.PolygonMeshBuilder.prototype.wallBuilder = function (w0, w1) {
+    var positions = [];
+    var direction = w1.corner.subtract(w0.corner).normalize();
+    var angle = Math.acos(direction.x);
+    if (direction.z != 0) {
+        angle *= direction.z / Math.abs(direction.z);
+    }
+    this._points.elements.forEach(function (p) {
+        positions.push(p.x * Math.cos(angle) + w0.corner.x, p.y, p.x * Math.sin(angle) + w0.corner.z);
+    });
+    var indices = [];
+    var res = earcut(this._epoints, this._eholes, 2);
+    for (var i = res.length; i > 0; i--) {
+        indices.push(res[i - 1]);
+    };
+    return { positions: positions, indices: indices };
+};
+
+// ALL THE SETUP START
+
+var createScene = function () {
+    var scene = new BABYLON.Scene(engine);
+
+    scene.enablePhysics();
+
+ /*
+//top camera
+var camera = new BABYLON.ArcRotateCamera("camera", 0,0.1, 100, BABYLON.Vector3.Zero(), scene);
+camera.attachControl(canvas, true);
+camera.setTarget(BABYLON.Vector3.Zero());
+camera.attachControl(canvas, true);
+*/
+
+//walk around camera
+var camera = new BABYLON.UniversalCamera("camera1", new BABYLON.Vector3(5, 1.6, 0), scene);
+    camera.speed = 1;
+    camera.checkCollisions = true;
+    camera.applyGravity = true;
+    camera.attachControl(canvas, true);
+    scene.gravity = new BABYLON.Vector3(0, -9.81, 0);
+    camera.keysLeft = [];
+    camera.keysRight = [];
+    camera.keysRotateLeft = [37];
+    camera.keysRotateRight = [39];
+    camera.inertia = 0.35;
+    //mouse rotate speed
+    camera.angularSensibility = 4000;
+    //touch rotate speed
+    camera.touchAngularSensibility = 20000;
+
+ /*side camera
+var camera = new BABYLON.ArcRotateCamera("camera", 0,1, 100, BABYLON.Vector3.Zero(), scene);
+camera.attachControl(canvas, true);
+camera.setTarget(BABYLON.Vector3.Zero());
+camera.attachControl(canvas, true);
+*/
+
+    
+    var corner = function (x, y) {
+        return new BABYLON.Vector3(x, 0, y);
+    }
+
+    var wall = function (corner) {
+        this.corner = corner;
+
+    }
+
+    var buildFromPlan = function (walls, ply, height, options, scene) {
+
+        //Arrays for vertex positions and indices
+        var positions = [];
+        var indices = [];
+        var uvs = [];
+        var colors = [];
+
+        var interiorUV = options.interiorUV || new BABYLON.Vector4(0, 0, 1, 1);
+        var exteriorUV = options.exteriorUV || new BABYLON.Vector4(0, 0, 1, 1);
+
+        var interiorColor = options.interiorColor || new BABYLON.Color4(1, 1, 1, 1);
+        var exteriorColor = options.exteriorColor || new BABYLON.Color4(1, 1, 1, 1);
+        var interior = options.interior || false;
+        if (!interior) {
+            walls.push(walls[0]);
+        }
+
+        var interiorIndex;
+
+        //Arrays to hold wall corner data 
+        var innerBaseCorners = [];
+        var outerBaseCorners = [];
+        var innerTopCorners = [];
+        var outerTopCorners = [];
+
+        var angle = 0;
+        var direction = 0;
+
+        var line = BABYLON.Vector3.Zero();
+        var nextLine = BABYLON.Vector3.Zero();
+
+        var nbWalls = walls.length;
+        if (nbWalls === 2) {
+            walls[1].corner.subtractToRef(walls[0].corner, line);
+            lineNormal = new BABYLON.Vector3(line.z, 0, -1 * line.x).normalize();
+            line.normalize();
+            innerBaseCorners[0] = walls[0].corner;
+            outerBaseCorners[0] = walls[0].corner.add(lineNormal.scale(ply));
+            innerBaseCorners[1] = walls[1].corner;
+            outerBaseCorners[1] = walls[1].corner.add(lineNormal.scale(ply));
+        }
+        else if (nbWalls > 2) {
+            for (var w = 0; w < nbWalls - 1; w++) {
+                walls[w + 1].corner.subtractToRef(walls[w].corner, nextLine);
+                angle = Math.PI - Math.acos(BABYLON.Vector3.Dot(line, nextLine) / (line.length() * nextLine.length()));
+                direction = BABYLON.Vector3.Cross(nextLine, line).normalize().y;
+                lineNormal = new BABYLON.Vector3(line.z, 0, -1 * line.x).normalize();
+                line.normalize();
+                innerBaseCorners[w] = walls[w].corner
+                outerBaseCorners[w] = walls[w].corner.add(lineNormal.scale(ply)).add(line.scale(direction * ply / Math.tan(angle / 2)));
+                line = nextLine.clone();
+            }
+            if (interior) {
+                lineNormal = new BABYLON.Vector3(line.z, 0, -1 * line.x).normalize();
+                line.normalize();
+                innerBaseCorners[nbWalls - 1] = walls[nbWalls - 1].corner
+                outerBaseCorners[nbWalls - 1] = walls[nbWalls - 1].corner.add(lineNormal.scale(ply));
+                walls[1].corner.subtractToRef(walls[0].corner, line);
+                lineNormal = new BABYLON.Vector3(line.z, 0, -1 * line.x).normalize();
+                line.normalize();
+                innerBaseCorners[0] = walls[0].corner;
+                outerBaseCorners[0] = walls[0].corner.add(lineNormal.scale(ply));
+            }
+            else {
+                walls[1].corner.subtractToRef(walls[0].corner, nextLine);
+                angle = Math.PI - Math.acos(BABYLON.Vector3.Dot(line, nextLine) / (line.length() * nextLine.length()));
+                direction = BABYLON.Vector3.Cross(nextLine, line).normalize().y;
+                lineNormal = new BABYLON.Vector3(line.z, 0, -1 * line.x).normalize();
+                line.normalize();
+                innerBaseCorners[0] = walls[0].corner
+                outerBaseCorners[0] = walls[0].corner.add(lineNormal.scale(ply)).add(line.scale(direction * ply / Math.tan(angle / 2)));
+                innerBaseCorners[nbWalls - 1] = innerBaseCorners[0];
+                outerBaseCorners[nbWalls - 1] = outerBaseCorners[0]
+
+            }
+        }
+
+        // inner and outer top corners
+        for (var w = 0; w < nbWalls; w++) {
+            innerTopCorners.push(new BABYLON.Vector3(innerBaseCorners[w].x, height, innerBaseCorners[w].z));
+            outerTopCorners.push(new BABYLON.Vector3(outerBaseCorners[w].x, height, outerBaseCorners[w].z));
+        }
+
+        var maxL = 0;
+        for (w = 0; w < nbWalls - 1; w++) {
+            maxL = Math.max(innerBaseCorners[w + 1].subtract(innerBaseCorners[w]).length(), maxL);
+        }
+
+        var maxH = height; // for when gables introduced
+
+        /******House Mesh Construction********/
+
+        // Wall Construction
+        var polygonCorners;
+        var polygonTriangulation;
+        var wallData;
+        var wallDirection = BABYLON.Vector3.Zero();
+        var wallNormal = BABYLON.Vector3.Zero();
+        var wallLength;
+        var exteriorWallLength;
+        var uvx, uvy;
+        var wallDiff;
+
+        for (var w = 0; w < nbWalls - 1; w++) {
+            walls[w + 1].corner.subtractToRef(walls[w].corner, wallDirection);
+            wallLength = wallDirection.length();
+            wallDirection.normalize();
+            wallNormal.x = wallDirection.z;
+            wallNormal.z = -1 * wallDirection.x;
+            exteriorWallLength = outerBaseCorners[w + 1].subtract(outerBaseCorners[w]).length();
+            wallDiff = exteriorWallLength - wallLength;
+
+
+   
+            polygonCorners = [];
+            polygonCorners.push(new BABYLON.Vector2(0, 0));
+            polygonCorners.push(new BABYLON.Vector2(wallLength, 0));
+            polygonCorners.push(new BABYLON.Vector2(wallLength, height));
+            polygonCorners.push(new BABYLON.Vector2(0, height));
+
+            //Construct triangulation of polygon using its corners
+            polygonTriangulation = new BABYLON.PolygonMeshBuilder("", polygonCorners, scene);
+
+
+
+
+            // wallBuilder produces wall vertex positions array and indices using the current and next wall to rotate and translate vertex positions to correct place
+            wallData = polygonTriangulation.wallBuilder(walls[w], walls[w + 1]);
+
+            nbIndices = positions.length / 3; // current number of indices
+
+            polygonTriangulation._points.elements.forEach(function (p) {
+                uvx = interiorUV.x + p.x * (interiorUV.z - interiorUV.x) / maxL;
+                uvy = interiorUV.y + p.y * (interiorUV.w - interiorUV.y) / height;
+                uvs.push(uvx, uvy);
+                colors.push(interiorColor.r, interiorColor.g, interiorColor.b, interiorColor.a);
+            });
+
+            //Add inner wall positions (repeated for flat shaded mesh)
+            positions = positions.concat(wallData.positions);
+
+            interiorIndex = positions.length / 3;
+
+            indices = indices.concat(wallData.indices.map(function (idx) {
+                return idx + nbIndices;
+            }));
+
+
+
+            //Calulate exterior wall uvs
+            polygonTriangulation._points.elements.forEach(function (p) {
+                if (p.x == 0) {
+                    uvx = exteriorUV.x;
+                }
+                else if (wallLength - p.x < 0.000001) {
+                    uvx = exteriorUV.x + (wallDiff + p.x) * (exteriorUV.z - exteriorUV.x) / (maxL + wallDiff)
+                }
+                else {
+                    uvx = exteriorUV.x + (0.5 * wallDiff + p.x) * (exteriorUV.z - exteriorUV.x) / (maxL + wallDiff);
+                }
+                uvy = exteriorUV.y + p.y * (exteriorUV.w - exteriorUV.y) / height;
+                uvs.push(uvx, uvy);
+            });
+
+            nbIndices = positions.length / 3; // current number of indices
+
+            //Add outer wall positions, uvs and colors (repeated for flat shaded mesh)
+            positions = positions.concat(wallData.positions);
+
+
+            //Reverse indices for correct normals
+            wallData.indices.reverse();
+
+            indices = indices.concat(wallData.indices.map(function (idx) {
+                return idx + nbIndices;
+            }));
+
+            //Construction of top of wall facets
+            nbIndices = positions.length / 3; // current number of indices
+
+            positions.push(innerTopCorners[w].x, innerTopCorners[w].y, innerTopCorners[w].z); //tl
+            positions.push(innerTopCorners[w + 1].x, innerTopCorners[w + 1].y, innerTopCorners[w + 1].z); //tr
+            positions.push(outerTopCorners[w].x, outerTopCorners[w].y, outerTopCorners[w].z); //bl
+            positions.push(outerTopCorners[w + 1].x, outerTopCorners[w + 1].y, outerTopCorners[w + 1].z); //br
+
+            uvx = exteriorUV.x + 0.5 * wallDiff * (exteriorUV.z - exteriorUV.x) / maxL;
+            uvs.push(uvx, exteriorUV.y + (exteriorUV.w - exteriorUV.y) * ply / maxH); //top Left
+
+            uvx = exteriorUV.x + (0.5 * wallDiff + wallLength) * (exteriorUV.z - exteriorUV.x) / maxL;
+            uvs.push(uvx, exteriorUV.y + (exteriorUV.w - exteriorUV.y) * ply / maxH); //top right
+
+            uvs.push(exteriorUV.x, exteriorUV.y); //base Left		
+            uvs.push(exteriorUV.x + (exteriorUV.z - exteriorUV.x) * exteriorWallLength / (maxL + wallDiff), exteriorUV.y); //base right
+
+            indices.push(nbIndices + 1, nbIndices, nbIndices + 3, nbIndices + 2, nbIndices + 3, nbIndices);
+
+            for (var p = interiorIndex; p < positions.length / 3; p++) {
+                colors.push(exteriorColor.r, exteriorColor.g, exteriorColor.b, exteriorColor.a);
+            }
+
+            var compareLeft = function (a, b) {
+                return a.left - b.left
+            }
+
+        }
+
+        var normals = [];
+
+        BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+        BABYLON.VertexData._ComputeSides(BABYLON.Mesh.FRONTSIDE, positions, indices, normals, uvs);
+
+        //Create a custom mesh  
+        var customMesh = new BABYLON.Mesh("custom", scene);
+
+        //Create a vertexData object
+        var vertexData = new BABYLON.VertexData();
+
+        //Assign positions and indices to vertexData
+        vertexData.positions = positions;
+        vertexData.indices = indices;
+        vertexData.normals = normals;
+        vertexData.uvs = uvs;
+        vertexData.colors = colors;
+
+        //Apply vertexData to custom mesh
+        vertexData.applyToMesh(customMesh);
+
+        return customMesh;
+
+    }
+
+    // ALL THE SETUP END
+    //***********************************************************************************
+
+    var scale = 3;
+    //across then down
+    var baseData = [
+        //community room
+        0 * scale, 4 * scale,
+        -2 * scale, 4 * scale,
+        -2 * scale, 9 * scale,
+        3 * scale, 9 * scale,
+        3 * scale, 4 * scale,
+        1 * scale, 4 * scale,
+        //main top right
+        1 * scale, 3 * scale,
+        3 * scale, 3 * scale,
+        3 * scale, 1 * scale,
+        //kitchen room
+        4 * scale, 1 * scale,
+        4 * scale, 3 * scale,
+        9 * scale, 3 * scale,
+        9 * scale, -2 * scale,
+        4 * scale, -2 * scale,
+        4 * scale, 0 * scale,
+        //main bottom right
+        3 * scale, 0 * scale,
+        3 * scale, -2 * scale,
+        1 * scale, -2 * scale,
+        //learn room
+        1 * scale, -3 * scale,
+        3 * scale, -3 * scale,
+        3 * scale, -8 * scale,
+        -2 * scale, -8 * scale,
+        -2 * scale, -3 * scale,
+        0 * scale, -3 * scale,
+        //main bottom left
+        0 * scale, -2 * scale,
+        -2 * scale, -2 * scale,
+        -2 * scale, 0 * scale,
+        //sports hall
+        -3 * scale, 0 * scale,
+        -3 * scale, -2 * scale,
+        -8 * scale, -2 * scale,
+        -8 * scale, 3 * scale,
+        -3 * scale, 3 * scale,
+        -3 * scale, 1 * scale,
+        //main top left
+        -2 * scale, 1 * scale,
+        -2 * scale, 3 * scale,
+        0 * scale, 3 * scale
+
+    ];
+
+
+    var corners = [];
+    for (b = 0; b < baseData.length / 2; b++) {
+        corners.push(new corner(baseData[2 * b], baseData[2 * b + 1]));
+    }
+
+    var walls = [];
+    for (c = 0; c < corners.length; c++) {
+        walls.push(new wall(corners[c]));
+    }
+
+    var ply = 0.5;
+
+//height of wall 8ft
+var wallDBL = 2 
+    var height = 8/wallDBL;
+
+    var house = buildFromPlan(walls, ply, height, { interiorUV: new BABYLON.Vector4(0.167, 0, 1, 1), exteriorUV: new BABYLON.Vector4(0, 0, 0.16, 1) }, scene);
+
+    mat = new BABYLON.StandardMaterial("", scene);
+    mat.emissiveTexture = new BABYLON.Texture("https://i.imgur.com/CGTCTfv.jpg", scene);
+
+    house.material = mat;
+
+    mat = new BABYLON.StandardMaterial("", scene);
+    mat.emissiveTexture = new BABYLON.Texture("https://i.imgur.com/CGTCTfv.jpg", scene);
+
+    house.material = mat;
+
+
+    var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 60, height: 60 }, scene);
+    ground.material = mat;
+    ground.checkCollisions = true;
+
+       var roof = BABYLON.MeshBuilder.CreateGround("ground", { width: 60, height: 60 }, scene);
+    roof.position.y = 3.6;
+    roof.rotation.x = 1.56*2;
+       roof.material = mat;
+
+    
+
+    const myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);  
+myMaterial.emissiveTexture = new BABYLON.Texture("https://samcundall.github.io/BoysAndGirls/01_images/01-communal-love.png", scene);
+
+//bring images off the wall a bit
+
+var imagePAD = -0.1;
+var imageScale = 0.0025;
+
+
+       var image = BABYLON.MeshBuilder.CreatePlane("image", { width: 743*imageScale, height: 589*imageScale }, scene);
+       image.position.y = 1.9;
+      image.position.z = 9 +imagePAD;
+      image.position.x = 7;
+    image.rotation.x = 0;
+    image.material = myMaterial;
+
+    const video1Material = new BABYLON.StandardMaterial("myMaterial", scene);
+    var video1MaterialVidTex = new BABYLON.VideoTexture("vidtex", "https://samcundall.github.io/BoysAndGirls/01_images/Learn-Video.mp4", scene);
+    video1Material.diffuseTexture = video1MaterialVidTex;
+    video1Material.emissiveColor = new BABYLON.Color3.White();
+
+
+    var video1 = BABYLON.MeshBuilder.CreatePlane("video1", { width: 743 * imageScale, height: 589 * imageScale }, scene);
+    video1.position.y = 1.9;
+    video1.position.z = 9 + imagePAD;
+    video1.position.x = 5;
+    video1.rotation.x = 0;
+    video1.material = video1Material;
+
+ 
+    return scene;
+
+}
+                window.initFunction = async function() {
+                    
+                    
+                    
+                    var asyncEngineCreation = async function() {
+                        try {
+                        return createDefaultEngine();
+                        } catch(e) {
+                        console.log("the available createEngine function failed. Creating the default engine instead");
+                        return createDefaultEngine();
+                        }
+                    }
+
+                    window.engine = await asyncEngineCreation();
+        if (!engine) throw 'engine should not be null.';
+        startRenderLoop(engine, canvas);
+        window.scene = createScene();};
+        initFunction().then(() => {sceneToRender = scene                    
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+</body>
+</html>
