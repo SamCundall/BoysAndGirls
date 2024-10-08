@@ -86,14 +86,13 @@ var createScene = function () {
 
     scene.enablePhysics();
 
- /*
+/*
 //top camera
-var camera = new BABYLON.ArcRotateCamera("camera", 0,0.1, 100, BABYLON.Vector3.Zero(), scene);
+var camera = new BABYLON.ArcRotateCamera("camera", -1.56,0.2, 100, BABYLON.Vector3.Zero(), scene);
 camera.attachControl(canvas, true);
 camera.setTarget(BABYLON.Vector3.Zero());
 camera.attachControl(canvas, true);
 */
-
 //walk around camera
 var camera = new BABYLON.UniversalCamera("camera1", new BABYLON.Vector3(5, 1.6, 0), scene);
     camera.speed = 1;
@@ -110,8 +109,8 @@ var camera = new BABYLON.UniversalCamera("camera1", new BABYLON.Vector3(5, 1.6, 
     camera.angularSensibility = 4000;
     //touch rotate speed
     camera.touchAngularSensibility = 20000;
-
- /*side camera
+/*/
+ side camera
 var camera = new BABYLON.ArcRotateCamera("camera", 0,1, 100, BABYLON.Vector3.Zero(), scene);
 camera.attachControl(canvas, true);
 camera.setTarget(BABYLON.Vector3.Zero());
@@ -475,15 +474,19 @@ var imageScale = 0.0025;
     video1Material.diffuseTexture = video1MaterialVidTex;
     video1Material.emissiveColor = new BABYLON.Color3.White();
 
-
     var video1 = BABYLON.MeshBuilder.CreatePlane("video1", { width: 743 * imageScale, height: 589 * imageScale }, scene);
     video1.position.y = 1.9;
-    video1.position.z = 9 + imagePAD;
-    video1.position.x = 5;
+    video1.position.z = 3*scale + imagePAD;
+    video1.position.x = 1.5*scale;
     video1.rotation.x = 0;
     video1.material = video1Material;
 
- 
+    var video2 = video1.clone("video2");
+    video2.position.z = 3*3*scale + imagePAD;
+
+ var video3 = video1.clone("video3");
+    video3.position.z = -3*scale + imagePAD;
+
     return scene;
 
 }
