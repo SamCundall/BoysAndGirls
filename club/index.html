@@ -86,15 +86,15 @@ var createScene = function () {
 
     scene.enablePhysics();
 
-/*
-//top camera
-var camera = new BABYLON.ArcRotateCamera("camera", -1.56,0.2, 100, BABYLON.Vector3.Zero(), scene);
-camera.attachControl(canvas, true);
-camera.setTarget(BABYLON.Vector3.Zero());
-camera.attachControl(canvas, true);
-*/
-//walk around camera
-var camera = new BABYLON.UniversalCamera("camera1", new BABYLON.Vector3(5, 1.6, 0), scene);
+    /*
+       //top camera
+       var camera = new BABYLON.ArcRotateCamera("camera", -1.56, 0.2, 100, BABYLON.Vector3.Zero(), scene);
+       camera.attachControl(canvas, true);
+       camera.setTarget(BABYLON.Vector3.Zero());
+       camera.attachControl(canvas, true);
+       */
+    //walk around camera
+    var camera = new BABYLON.UniversalCamera("camera1", new BABYLON.Vector3(5, 1.6, 0), scene);
     camera.speed = 1;
     camera.checkCollisions = true;
     camera.applyGravity = true;
@@ -109,15 +109,15 @@ var camera = new BABYLON.UniversalCamera("camera1", new BABYLON.Vector3(5, 1.6, 
     camera.angularSensibility = 4000;
     //touch rotate speed
     camera.touchAngularSensibility = 20000;
-/*/
- side camera
-var camera = new BABYLON.ArcRotateCamera("camera", 0,1, 100, BABYLON.Vector3.Zero(), scene);
-camera.attachControl(canvas, true);
-camera.setTarget(BABYLON.Vector3.Zero());
-camera.attachControl(canvas, true);
-*/
+    /*
+     side camera
+    var camera = new BABYLON.ArcRotateCamera("camera", 0,1, 100, BABYLON.Vector3.Zero(), scene);
+    camera.attachControl(canvas, true);
+    camera.setTarget(BABYLON.Vector3.Zero());
+    camera.attachControl(canvas, true);
+    */
 
-    
+
     var corner = function (x, y) {
         return new BABYLON.Vector3(x, 0, y);
     }
@@ -241,7 +241,7 @@ camera.attachControl(canvas, true);
             wallDiff = exteriorWallLength - wallLength;
 
 
-   
+
             polygonCorners = [];
             polygonCorners.push(new BABYLON.Vector2(0, 0));
             polygonCorners.push(new BABYLON.Vector2(wallLength, 0));
@@ -366,6 +366,7 @@ camera.attachControl(canvas, true);
     //across then down
     var baseData = [
         //community room
+
         0 * scale, 4 * scale,
         -2 * scale, 4 * scale,
         -2 * scale, 9 * scale,
@@ -425,9 +426,9 @@ camera.attachControl(canvas, true);
 
     var ply = 0.5;
 
-//height of wall 8ft
-var wallDBL = 2 
-    var height = 8/wallDBL;
+    //height of wall 8ft
+    var wallDBL = 2
+    var height = 8 / wallDBL;
 
     var house = buildFromPlan(walls, ply, height, { interiorUV: new BABYLON.Vector4(0.167, 0, 1, 1), exteriorUV: new BABYLON.Vector4(0, 0, 0.16, 1) }, scene);
 
@@ -436,56 +437,174 @@ var wallDBL = 2
 
     house.material = mat;
 
-    mat = new BABYLON.StandardMaterial("", scene);
-    mat.emissiveTexture = new BABYLON.Texture("https://i.imgur.com/CGTCTfv.jpg", scene);
 
-    house.material = mat;
+    var origin = BABYLON.MeshBuilder.CreateSphere("origin", { diameter: 2 }, scene);
 
+    house.parent = origin;
 
     var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 60, height: 60 }, scene);
     ground.material = mat;
     ground.checkCollisions = true;
+    ground.position.y = -0.1;
 
-       var roof = BABYLON.MeshBuilder.CreateGround("ground", { width: 60, height: 60 }, scene);
+
+    var foorCommunal = BABYLON.MeshBuilder.CreateGround("ground", { width: 15, height: 15 }, scene);
+    foorCommunal.material = mat;
+
+    var floorKitchen = BABYLON.MeshBuilder.CreateGround("ground", { width: 15, height: 15 }, scene);
+    floorKitchen.material = mat;
+    floorKitchen.position.x = 6 * scale;
+
+    var floorLearn = BABYLON.MeshBuilder.CreateGround("ground", { width: 15, height: 15 }, scene);
+    floorLearn.material = mat;
+    floorLearn.position.z = -6 * scale;
+
+    var floorCommunity = BABYLON.MeshBuilder.CreateGround("ground", { width: 15, height: 15 }, scene);
+    floorCommunity.material = mat;
+    floorCommunity.position.z = 6 * scale;
+
+    var floorSports = BABYLON.MeshBuilder.CreateGround("ground", { width: 15, height: 15 }, scene);
+    floorSports.material = mat;
+    floorSports.position.x = -6 * scale;
+
+    var roof = BABYLON.MeshBuilder.CreateGround("ground", { width: 60, height: 60 }, scene);
     roof.position.y = 3.6;
-    roof.rotation.x = 1.56*2;
-       roof.material = mat;
+    roof.rotation.x = 1.56 * 2;
+    roof.material = mat;
 
-    
+    //bring images off the wall a bit
+    var imagePAD = -0.1;
+    var imageScale = 0.0025;
 
-    const myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);  
-myMaterial.emissiveTexture = new BABYLON.Texture("https://samcundall.github.io/BoysAndGirls/01_images/01-communal-love.png", scene);
-
-//bring images off the wall a bit
-
-var imagePAD = -0.1;
-var imageScale = 0.0025;
-
-
-       var image = BABYLON.MeshBuilder.CreatePlane("image", { width: 743*imageScale, height: 589*imageScale }, scene);
-       image.position.y = 1.9;
-      image.position.z = 9 +imagePAD;
-      image.position.x = 7;
+    //image 1
+    const loveMaterial = new BABYLON.StandardMaterial("loveMaterial", scene);
+    loveMaterial.emissiveTexture = new BABYLON.Texture("https://samcundall.github.io/BoysAndGirls/01_images/01-communal-love.png", scene);
+    var image = BABYLON.MeshBuilder.CreatePlane("image", { width: 743 * imageScale, height: 589 * imageScale }, scene);
+    image.position.y = 1.9;
+    image.position.z = 9 + imagePAD;
+    image.position.x = 7;
     image.rotation.x = 0;
-    image.material = myMaterial;
+    image.material = loveMaterial;
 
-    const video1Material = new BABYLON.StandardMaterial("myMaterial", scene);
+    //image pinned 1
+    const pinned1Material = new BABYLON.StandardMaterial("pinned1Material", scene);
+    pinned1Material.emissiveTexture = new BABYLON.Texture("https://samcundall.github.io/BoysAndGirls/01_images/06-Teen-awards.png", scene);
+    var pinnedImage = BABYLON.MeshBuilder.CreatePlane("pinnedImage", { width: 743 * imageScale, height: 589 * imageScale }, scene);
+    pinnedImage.position.y = 1.9;
+    pinnedImage.position.z = 18 + imagePAD;
+    pinnedImage.position.x = 7;
+    pinnedImage.rotation.y = 1.56;
+    pinnedImage.material = pinned1Material;
+
+    //image description 1
+    const description1Material = new BABYLON.StandardMaterial("description1Material", scene);
+    description1Material.emissiveTexture = new BABYLON.Texture("https://samcundall.github.io/BoysAndGirls/01_images/CommunityRoom.png", scene);
+    var descriptionImage = BABYLON.MeshBuilder.CreatePlane("descriptionImage", { width: 3600 * imageScale, height: 790 * imageScale }, scene);
+    descriptionImage.position.y = 1.9;
+    descriptionImage.position.z = 18 + imagePAD;
+    descriptionImage.position.x = -7;
+    descriptionImage.rotation.y = -1.56;
+    descriptionImage.material = description1Material;
+
+    const video1Material = new BABYLON.StandardMaterial("video1Material", scene);
     var video1MaterialVidTex = new BABYLON.VideoTexture("vidtex", "https://samcundall.github.io/BoysAndGirls/01_images/Learn-Video.mp4", scene);
     video1Material.diffuseTexture = video1MaterialVidTex;
     video1Material.emissiveColor = new BABYLON.Color3.White();
 
     var video1 = BABYLON.MeshBuilder.CreatePlane("video1", { width: 743 * imageScale, height: 589 * imageScale }, scene);
     video1.position.y = 1.9;
-    video1.position.z = 3*scale + imagePAD;
-    video1.position.x = 1.5*scale;
+    video1.position.z = 3 * scale + imagePAD;
+    video1.position.x = 1.5 * scale;
     video1.rotation.x = 0;
     video1.material = video1Material;
 
     var video2 = video1.clone("video2");
-    video2.position.z = 3*3*scale + imagePAD;
+    video2.position.z = 3 * 3 * scale + imagePAD;
 
- var video3 = video1.clone("video3");
-    video3.position.z = -3*scale + imagePAD;
+    var video3 = video1.clone("video3");
+    video3.position.z = -3 * scale + imagePAD;
+
+    image.parent = origin;
+    video1.parent = origin;
+    video2.parent = origin;
+    video3.parent = origin;
+
+    origin.position.x = -1.5;
+    origin.position.z = -1.5;
+    const originMaterial = new BABYLON.StandardMaterial("originMaterial", scene);
+    originMaterial.alpha = 0;
+    origin.material = originMaterial;
+
+
+
+
+
+
+	var setApp = function(but) {   
+		switch(but) {
+            case 0: 
+               
+            break
+            case 1: 
+                    //the  teams classic position
+    house.material.alpha = 0;
+
+    descriptionImage.position.y = video2.position.y + 7.65;
+    descriptionImage.position.z = video2.position.z;
+    descriptionImage.position.x = video2.position.x - 2;
+    descriptionImage.rotation.y = video2.rotation.x;
+    descriptionImage.scaling.x = 0.3;
+    descriptionImage.scaling.y = 0.3;
+
+    var chatList = descriptionImage.clone("chatlist");
+    chatList.position.x = -0.8;
+    chatList.position.y = 2.7;
+    chatList.scaling.y = 0.2;
+    chatList.scaling.x = 0.2;
+
+    pinnedImage.position.y = video2.position.y + 5.5;
+    pinnedImage.position.z = video2.position.z;
+    pinnedImage.position.x = video2.position.x + 6;
+    pinnedImage.rotation.y = video2.rotation.x;
+
+    const teams1Material = new BABYLON.StandardMaterial("teams1Material", scene);
+    teams1Material.emissiveTexture = new BABYLON.Texture("https://samcundall.github.io/BoysAndGirls/01_images/teams.png", scene);
+    var teamsImage = BABYLON.MeshBuilder.CreatePlane("teamsImage", { width: 6000 * imageScale, height: 4500 * imageScale }, scene);
+    teamsImage.position.y = video2.position.y + 3;
+    teamsImage.position.z = video2.position.z + 1;
+    teamsImage.position.x = video2.position.x;
+    teamsImage.rotation.y = video2.rotation.x;
+    teamsImage.material = teams1Material;
+    video2.position.y = 5;
+    video2.position.x = 5.5;
+    video2.scaling.x = 2;
+    video2.scaling.y = 2;
+    camera.position.z = 4;
+    camera.position.y = 5;
+            break
+        }
+	}
+	
+
+	var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+    var selectBox = new BABYLON.GUI.SelectionPanel("sp");
+    selectBox.width = 0.25;
+    selectBox.height = 0.25;
+    selectBox.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+    selectBox.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+     
+    advancedTexture.addControl(selectBox);
+
+	
+	var appGroup = new BABYLON.GUI.RadioGroup("App");
+	appGroup.addRadio("Press F5 for Mesh", setApp, true);
+    appGroup.addRadio("Teams", setApp);
+
+
+    selectBox.addGroup(appGroup);
+
+   
 
     return scene;
 
